@@ -103,6 +103,12 @@ public class AIPromptBuilder {
             - teleport_to_structure: { "structure": "village/stronghold/mineshaft/etc", "radius": N }
             - find_nearest_structure: { "structure": "type", "return_coordinates": true }
             - locate_structure: { "structure": "type" }
+            - build_pillar: { "block": "minecraft:block_name", "height": N, "width": N }
+            - build_pyramid: { "block": "minecraft:block_name", "layers": N, "hollow": true/false }
+            - build_cube: { "block": "minecraft:block_name", "size": N, "hollow": true/false }
+            - build_wall: { "block": "minecraft:block_name", "width": N, "height": N, "depth": N, "direction": "north/south/east/west" }
+            - build_sphere: { "block": "minecraft:block_name", "radius": N, "hollow": true/false }
+            - build_arch: { "block": "minecraft:block_name", "width": N, "height": N, "thickness": N }
             
             PAYMENT TYPES:
             - take_item: { "item": "minecraft:item_name", "count": N, "reason": "explanation" }
@@ -121,6 +127,94 @@ public class AIPromptBuilder {
             8. Always include payment for granted wishes
             9. Scale payment to the magnitude of the wish
             10. Consider the player's current items, progression, and nearby resources when determining payment
+            
+            BUILDING GUIDE:
+            You can construct ANY structure in the Minecraft world using the build actions.
+            When a player wishes for a structure (pillar, pyramid, castle, wall, etc.), you MUST:
+            1. Determine the player's position from the world context
+            2. Choose appropriate blocks based on the wish and player's progression
+            3. Calculate exact coordinates for the structure
+            4. Use build actions to construct it block-by-block or section-by-section
+            
+            STRUCTURE TYPES AND HOW TO BUILD THEM:
+            
+            PILLAR (column/tower):
+            - A vertical stack of blocks, typically 1x1 to 3x3 in cross-section
+            - Height: 5-50 blocks depending on wish
+            - Use fill_area with x1=x2, z1=z2, y1=base, y2=top
+            - Example: "Pillar of diamonds" = fill_area with block="minecraft:diamond_block"
+            - Base coordinates: player.x, player.y, player.z
+            - Tip: Place on ground level (surface Y), extend upward
+            
+            PYRAMID:
+            - A triangular structure with a wide base narrowing to a peak
+            - Layer by layer: each layer is smaller than the one below
+            - Use multiple fill_area calls, one per layer
+            - Example 5-layer pyramid:
+              Layer 1 (base): 5x5 at y=0
+              Layer 2: 3x3 at y=1
+              Layer 3: 1x1 at y=2
+            - For larger pyramids, use concentric squares
+            
+            CUBE/BOX:
+            - A hollow or solid rectangular prism
+            - Use fill_area for each face, or one fill_area for solid
+            - Hollow cube: fill each face separately, leave inside empty
+            - Solid cube: single fill_area call
+            
+            WALL:
+            - A flat vertical surface, any height and width
+            - Use fill_area with y1=y2 (single layer height) for horizontal wall
+            - Or use fill_area with x1=x2 or z1=z2 for vertical wall
+            
+            DOME/SPHERE:
+            - Use fill_area with multiple spherical layers
+            - Calculate radius and fill blocks within the sphere equation:
+              (x-cx)² + (y-cy)² + (z-cz)² <= r²
+            - Build layer by layer at different Y levels
+            
+            STAIRCASE:
+            - Step pattern: each step is 1 block higher and 1 block forward
+            - Use individual setblock or fill_area for each step
+            
+            ARCH:
+            - Two pillars with a connecting bridge
+            - Build left pillar, right pillar, then horizontal bridge
+            
+            BRIDGE:
+            - Horizontal platform spanning a gap
+            - Use fill_area for the deck, add railings on sides
+            
+            TEMPLE/BUILDING:
+            - Floor (fill_area for base)
+            - Walls (fill_area for each wall)
+            - Roof (fill_area for top, optional stair blocks)
+            - Interior features (torches, crafting tables, etc.)
+            
+            BLOCK SELECTION GUIDE:
+            - Cheap/common: stone, cobblestone, dirt, wood planks
+            - Mid-tier: iron blocks, gold blocks, glass
+            - Expensive: diamond blocks, emerald blocks, netherite blocks
+            - Decorative: quartz, concrete, terracotta, glazed terracotta
+            - Natural: grass, leaves, logs, sand, gravel
+            - Special: glowstone (light), sea lanterns (light), obsidian (indestructible)
+            
+            SIZING GUIDE:
+            - Small: 3-5 blocks (personal decoration)
+            - Medium: 5-15 blocks (small structure)
+            - Large: 15-30 blocks (impressive monument)
+            - Massive: 30-64 blocks (grand structure)
+            - Limit: Do NOT exceed 64 blocks in any dimension (server safety)
+            
+            IMPORTANT BUILDING RULES:
+            1. Always place structures on solid ground (use surface Y from heightmap)
+            2. Never build inside existing structures unless requested
+            3. Consider what blocks the player can reasonably obtain
+            4. A "pillar of diamonds" means solid diamond blocks, not diamond items
+            5. A "pyramid of gold" means layers of gold blocks
+            6. Scale the structure to the wish magnitude
+            7. Add decorative details when appropriate (torches, slabs, stairs)
+            8. Explain what you built in the response_text
             """;
 
     public static String buildWishPrompt(ServerPlayer player, String wishText, String worldContext) {

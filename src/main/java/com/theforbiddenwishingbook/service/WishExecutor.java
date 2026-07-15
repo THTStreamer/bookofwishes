@@ -63,6 +63,12 @@ public class WishExecutor {
                 case "teleport_to_structure" -> executeTeleportToStructure(player, action);
                 case "find_nearest_structure" -> executeFindNearestStructure(player, action);
                 case "locate_structure" -> executeLocateStructure(player, action);
+                case "build_pillar" -> executeBuildPillar(player, action);
+                case "build_pyramid" -> executeBuildPyramid(player, action);
+                case "build_cube" -> executeBuildCube(player, action);
+                case "build_wall" -> executeBuildWall(player, action);
+                case "build_sphere" -> executeBuildSphere(player, action);
+                case "build_arch" -> executeBuildArch(player, action);
                 default -> {
                     TheForbiddenWishingBook.LOGGER.warn("Unknown wish action type: {}", type);
                     yield ExecutionResult.fail("Unknown action type: " + type);
@@ -500,5 +506,261 @@ public class WishExecutor {
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildPillar(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int height = action.containsKey("height") ? ((Number) action.get("height")).intValue() : 10;
+        int width = action.containsKey("width") ? ((Number) action.get("width")).intValue() : 1;
+
+        if (height > 64) height = 64;
+        if (width > 8) width = 8;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int baseX = (int) Math.floor(player.getX());
+        int baseY = level.getHeight(Heightmap.Types.WORLD_SURFACE, baseX, (int) Math.floor(player.getZ()));
+        int baseZ = (int) Math.floor(player.getZ());
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                for (int z = 0; z < width; z++) {
+                    BlockPos pos = new BlockPos(baseX + x, baseY + y, baseZ + z);
+                    if (level.isLoaded(pos)) {
+                        level.setBlockAndUpdate(pos, state);
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built " + width + "x" + width + " pillar of " + blockStr + ", " + height + " blocks tall (" + placed + " blocks placed)");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildPyramid(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int layers = action.containsKey("layers") ? ((Number) action.get("layers")).intValue() : 5;
+        boolean hollow = action.containsKey("hollow") ? (Boolean) action.get("hollow") : false;
+
+        if (layers > 32) layers = 32;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int centerX = (int) Math.floor(player.getX());
+        int baseY = level.getHeight(Heightmap.Types.WORLD_SURFACE, centerX, (int) Math.floor(player.getZ()));
+        int centerZ = (int) Math.floor(player.getZ());
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        for (int layer = 0; layer < layers; layer++) {
+            int size = (layers - layer) * 2 + 1;
+            int halfSize = size / 2;
+
+            for (int x = -halfSize; x <= halfSize; x++) {
+                for (int z = -halfSize; z <= halfSize; z++) {
+                    if (hollow && Math.abs(x) == halfSize && Math.abs(z) == halfSize) continue;
+                    if (hollow && layer > 0 && layer < layers - 1 && Math.abs(x) < halfSize && Math.abs(z) < halfSize) continue;
+
+                    BlockPos pos = new BlockPos(centerX + x, baseY + layer, centerZ + z);
+                    if (level.isLoaded(pos)) {
+                        level.setBlockAndUpdate(pos, state);
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built " + (hollow ? "hollow " : "") + "pyramid of " + blockStr + ", " + layers + " layers (" + placed + " blocks placed)");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildCube(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int size = action.containsKey("size") ? ((Number) action.get("size")).intValue() : 5;
+        boolean hollow = action.containsKey("hollow") ? (Boolean) action.get("hollow") : true;
+
+        if (size > 64) size = 64;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int baseX = (int) Math.floor(player.getX()) - size / 2;
+        int baseY = level.getHeight(Heightmap.Types.WORLD_SURFACE, (int) Math.floor(player.getX()), (int) Math.floor(player.getZ()));
+        int baseZ = (int) Math.floor(player.getZ()) - size / 2;
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                for (int z = 0; z < size; z++) {
+                    boolean isEdge = x == 0 || x == size - 1 || y == 0 || y == size - 1 || z == 0 || z == size - 1;
+                    if (hollow && !isEdge) continue;
+
+                    BlockPos pos = new BlockPos(baseX + x, baseY + y, baseZ + z);
+                    if (level.isLoaded(pos)) {
+                        level.setBlockAndUpdate(pos, state);
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built " + (hollow ? "hollow " : "solid ") + "cube of " + blockStr + ", " + size + "x" + size + "x" + size + " (" + placed + " blocks placed)");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildWall(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int width = action.containsKey("width") ? ((Number) action.get("width")).intValue() : 10;
+        int height = action.containsKey("height") ? ((Number) action.get("height")).intValue() : 5;
+        int depth = action.containsKey("depth") ? ((Number) action.get("depth")).intValue() : 1;
+        String direction = action.containsKey("direction") ? (String) action.get("direction") : "north";
+
+        if (width > 64) width = 64;
+        if (height > 32) height = 32;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int baseX = (int) Math.floor(player.getX());
+        int baseY = level.getHeight(Heightmap.Types.WORLD_SURFACE, baseX, (int) Math.floor(player.getZ()));
+        int baseZ = (int) Math.floor(player.getZ());
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        int dx = direction.equalsIgnoreCase("east") || direction.equalsIgnoreCase("west") ? 0 : 1;
+        int dz = direction.equalsIgnoreCase("north") || direction.equalsIgnoreCase("south") ? 0 : 1;
+
+        for (int w = 0; w < width; w++) {
+            for (int h = 0; h < height; h++) {
+                for (int d = 0; d < depth; d++) {
+                    BlockPos pos = new BlockPos(baseX + w * dx + d * dz, baseY + h, baseZ + w * dz + d * dx);
+                    if (level.isLoaded(pos)) {
+                        level.setBlockAndUpdate(pos, state);
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built wall of " + blockStr + ", " + width + "x" + height + " facing " + direction + " (" + placed + " blocks placed)");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildSphere(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int radius = action.containsKey("radius") ? ((Number) action.get("radius")).intValue() : 5;
+        boolean hollow = action.containsKey("hollow") ? (Boolean) action.get("hollow") : true;
+
+        if (radius > 32) radius = 32;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int centerX = (int) Math.floor(player.getX());
+        int centerY = level.getHeight(Heightmap.Types.WORLD_SURFACE, centerX, (int) Math.floor(player.getZ())) + radius;
+        int centerZ = (int) Math.floor(player.getZ());
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    double dist = Math.sqrt(x * x + y * y + z * z);
+                    if (hollow) {
+                        if (dist < radius - 1 || dist > radius) continue;
+                    } else {
+                        if (dist > radius) continue;
+                    }
+
+                    BlockPos pos = new BlockPos(centerX + x, centerY + y, centerZ + z);
+                    if (level.isLoaded(pos)) {
+                        level.setBlockAndUpdate(pos, state);
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built " + (hollow ? "hollow " : "solid ") + "sphere of " + blockStr + ", radius " + radius + " (" + placed + " blocks placed)");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExecutionResult executeBuildArch(ServerPlayer player, Map<String, Object> action) {
+        String blockStr = (String) action.get("block");
+        int width = action.containsKey("width") ? ((Number) action.get("width")).intValue() : 7;
+        int height = action.containsKey("height") ? ((Number) action.get("height")).intValue() : 5;
+        int thickness = action.containsKey("thickness") ? ((Number) action.get("thickness")).intValue() : 1;
+
+        if (width > 32) width = 32;
+        if (height > 16) height = 16;
+
+        ResourceLocation blockId = ResourceLocation.parse(blockStr);
+        var block = BuiltInRegistries.BLOCK.get(blockId);
+        if (block == null || block == Blocks.AIR) return ExecutionResult.fail("Unknown block: " + blockStr);
+
+        ServerLevel level = player.serverLevel();
+        int baseX = (int) Math.floor(player.getX()) - width / 2;
+        int baseY = level.getHeight(Heightmap.Types.WORLD_SURFACE, (int) Math.floor(player.getX()), (int) Math.floor(player.getZ()));
+        int baseZ = (int) Math.floor(player.getZ()) - thickness / 2;
+
+        BlockState state = block.defaultBlockState();
+        int placed = 0;
+
+        // Left pillar
+        for (int y = 0; y < height; y++) {
+            for (int t = 0; t < thickness; t++) {
+                BlockPos pos = new BlockPos(baseX, baseY + y, baseZ + t);
+                if (level.isLoaded(pos)) {
+                    level.setBlockAndUpdate(pos, state);
+                    placed++;
+                }
+            }
+        }
+
+        // Right pillar
+        for (int y = 0; y < height; y++) {
+            for (int t = 0; t < thickness; t++) {
+                BlockPos pos = new BlockPos(baseX + width - 1, baseY + y, baseZ + t);
+                if (level.isLoaded(pos)) {
+                    level.setBlockAndUpdate(pos, state);
+                    placed++;
+                }
+            }
+        }
+
+        // Top arch
+        for (int x = 0; x < width; x++) {
+            for (int t = 0; t < thickness; t++) {
+                BlockPos pos = new BlockPos(baseX + x, baseY + height, baseZ + t);
+                if (level.isLoaded(pos)) {
+                    level.setBlockAndUpdate(pos, state);
+                    placed++;
+                }
+            }
+        }
+
+        return ExecutionResult.ok("Built arch of " + blockStr + ", " + width + "x" + height + " (" + placed + " blocks placed)");
     }
 }
