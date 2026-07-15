@@ -9,7 +9,7 @@ Write wishes in a magical book. An AI entity reads them, decides whether to gran
 ### Features
 
 - **Custom Book of Wishes item** — Write and submit wishes through a custom GUI
-- **AI-powered wish processing** — Uses Ollama (local LLM) to understand and respond to wishes in-character
+- **Embedded AI** — Runs a local LLM inside the mod via llama.cpp. No external services required
 - **21 action types** — Items, effects, teleportation, entity spawning, world modification, PvP actions, structure discovery, and more
 - **Payment system** — The AI demands payment scaled to the wish: items, XP, named items, or resources from nearby players
 - **5 AI personalities** — Kind, Greedy, Trickster, Ancient, and Chaotic — each with unique response styles
@@ -26,7 +26,7 @@ Write wishes in a magical book. An AI entity reads them, decides whether to gran
 - Minecraft 1.21.1
 - NeoForge 21.1.x
 - Java 21
-- [Ollama](https://ollama.com/) running locally (or remote endpoint configured)
+- A GGUF model file (e.g., from Hugging Face)
 
 ## Setup
 
@@ -34,18 +34,17 @@ Write wishes in a magical book. An AI entity reads them, decides whether to gran
 
 Download `thebookofwishes-1.0.0.jar` from [Releases](https://github.com/THTStreamer/bookofwishes/releases) and place it in your server or client `mods/` folder.
 
-### 2. Set Up Ollama
+### 2. Get a Model
 
-1. Install [Ollama](https://ollama.com/)
-2. Pull a model:
-   ```bash
-   ollama pull llama3.1:8b
-   ```
-3. Start Ollama:
-   ```bash
-   ollama serve
-   ```
-4. The mod connects to `http://localhost:11434` by default. If your Ollama is on a different host/port, update the config (see below).
+Download a GGUF model file. Recommended options:
+
+| Model | Size | RAM Required | Quality |
+|-------|------|--------------|---------|
+| Qwen3-1.7B-Q4_K_M | ~1.1 GB | ~2 GB | Good |
+| Llama-3.2-3B-Q4_K_M | ~2 GB | ~3 GB | Better |
+| Gemma-3-1B-Q4_K_M | ~0.7 GB | ~1.5 GB | Acceptable |
+
+Place the `.gguf` file anywhere accessible (e.g., `config/models/`).
 
 ### 3. Configuration
 
@@ -53,10 +52,21 @@ On first launch, the mod generates `config/thebookofwishes-common.toml`. Key set
 
 ```toml
 [ollama]
+  # AI backend: "embedded" or "ollama"
+  llm_provider = "embedded"
+
+  # Ollama settings (only used when llm_provider = "ollama")
   endpoint = "http://localhost:11434"
   model = "llama3.1:8b"
   temperature = 0.4
   max_tokens = 700
+
+[embedded]
+  # Path to your GGUF model file
+  model_path = "config/models/my-model.gguf"
+  context_size = 2048
+  gpu_layers = 0
+  threads = 4
 
 [gameplay]
   cooldown_seconds = 30
@@ -96,6 +106,25 @@ cd bookofwishes
 
 The built jar will be in `build/libs/`.
 
+## AI Backend Options
+
+### Embedded (Recommended)
+
+Uses [java-llama.cpp](https://github.com/kherud/java-llama.cpp) to run a GGUF model directly inside the mod. No external services needed.
+
+- Set `llm_provider = "embedded"` in config
+- Set `model_path` to your GGUF file
+- Model loads automatically on first wish (takes a few seconds)
+- Runs entirely in-process — no network latency
+
+### Ollama (Legacy)
+
+Connects to an external [Ollama](https://ollama.com/) instance. Requires Ollama installed and running.
+
+- Set `llm_provider = "ollama"` in config
+- Set `endpoint` to your Ollama URL
+- Set `model` to your Ollama model name
+
 ## Wish Types
 
 The AI can grant wishes involving:
@@ -114,8 +143,13 @@ The AI can grant wishes involving:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `ollama.endpoint` | `http://localhost:11434` | Ollama API URL |
-| `ollama.model` | `llama3.1:8b` | Model to use |
+| `ollama.llm_provider` | `"ollama"` | AI backend (`embedded` or `ollama`) |
+| `embedded.model_path` | `""` | Path to GGUF model file |
+| `embedded.context_size` | `2048` | Context window size |
+| `embedded.gpu_layers` | `0` | Layers to offload to GPU (0 = CPU only) |
+| `embedded.threads` | `4` | CPU threads for inference |
+| `ollama.endpoint` | `http://localhost:11434` | Ollama API URL (legacy) |
+| `ollama.model` | `llama3.1:8b` | Model to use (legacy) |
 | `gameplay.cooldown_seconds` | `30` | Cooldown between wishes |
 | `gameplay.max_wishes_per_book` | `10` | Max wishes per book |
 | `gameplay.enable_payment_system` | `true` | Enable payment extraction |
