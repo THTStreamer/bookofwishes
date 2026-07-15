@@ -32,6 +32,7 @@ public abstract class LLMProvider {
             case "ollama" -> new OllamaProvider();
             case "openai" -> new OpenAIProvider();
             case "anthropic" -> new AnthropicProvider();
+            case "embedded" -> new EmbeddedProvider();
             default -> {
                 TheForbiddenWishingBook.LOGGER.warn("Unknown LLM provider: {}, falling back to Ollama", providerType);
                 yield new OllamaProvider();

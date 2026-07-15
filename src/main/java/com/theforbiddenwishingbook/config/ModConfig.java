@@ -14,6 +14,11 @@ public class ModConfig {
     public static ModConfigSpec.IntValue OLLAMA_RETRY_ATTEMPTS;
     public static ModConfigSpec.ConfigValue<String> LLM_PROVIDER;
 
+    public static ModConfigSpec.ConfigValue<String> EMBEDDED_MODEL_PATH;
+    public static ModConfigSpec.IntValue EMBEDDED_CONTEXT_SIZE;
+    public static ModConfigSpec.IntValue EMBEDDED_GPU_LAYERS;
+    public static ModConfigSpec.IntValue EMBEDDED_THREADS;
+
     public static ModConfigSpec.IntValue COOLDOWN_SECONDS;
     public static ModConfigSpec.IntValue MAX_WISHES_PER_BOOK;
     public static ModConfigSpec.BooleanValue ENABLE_PAYMENT_SYSTEM;
@@ -66,8 +71,32 @@ public class ModConfig {
                 .defineInRange("retry_attempts", 3, 0, 10);
 
         LLM_PROVIDER = builder
-                .comment("LLM provider to use (ollama, openai, anthropic)")
+                .comment("LLM provider to use (ollama, openai, anthropic, embedded)")
                 .define("llm_provider", "ollama");
+
+        builder.pop();
+
+        builder.comment("Embedded AI Settings (uses llama.cpp)").push("embedded");
+
+        EMBEDDED_MODEL_PATH = builder
+                .comment(
+                        "Path to the GGUF model file for embedded AI.",
+                        "If empty, uses Ollama instead.",
+                        "Example: './config/my-model.gguf'"
+                )
+                .define("model_path", "");
+
+        EMBEDDED_CONTEXT_SIZE = builder
+                .comment("Context window size for embedded AI model")
+                .defineInRange("context_size", 2048, 512, 32768);
+
+        EMBEDDED_GPU_LAYERS = builder
+                .comment("Number of layers to offload to GPU (0 = CPU only)")
+                .defineInRange("gpu_layers", 0, 0, 100);
+
+        EMBEDDED_THREADS = builder
+                .comment("Number of CPU threads for inference")
+                .defineInRange("threads", 4, 1, 32);
 
         builder.pop();
 

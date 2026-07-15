@@ -10,6 +10,7 @@ group = mod_group_id
 
 repositories {
     mavenLocal()
+    mavenCentral()
 }
 
 base {
@@ -94,4 +95,8 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+dependencies {
+    implementation 'de.kherud:llama:4.1.0'
 }

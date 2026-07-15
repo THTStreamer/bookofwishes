@@ -5,6 +5,7 @@ import com.theforbiddenwishingbook.network.ModNetwork;
 import com.theforbiddenwishingbook.registry.ModDataComponents;
 import com.theforbiddenwishingbook.registry.ModItems;
 import com.theforbiddenwishingbook.reputation.ReputationService;
+import com.theforbiddenwishingbook.service.EmbeddedLLMService;
 import com.theforbiddenwishingbook.service.WishActionRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -13,6 +14,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
@@ -36,6 +38,9 @@ public class TheForbiddenWishingBook {
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogin);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogout);
 
+        // Register server stopping event to clean up embedded model
+        NeoForge.EVENT_BUS.addListener(this::onServerStopping);
+
         LOGGER.info("The Book of Wishes has been bound to this world.");
     }
 
@@ -54,5 +59,10 @@ public class TheForbiddenWishingBook {
         if (event.getEntity() instanceof ServerPlayer player) {
             LOGGER.debug("Player logged out: {}", player.getName().getString());
         }
+    }
+
+    private void onServerStopping(ServerStoppingEvent event) {
+        EmbeddedLLMService.shutdown();
+        LOGGER.info("Embedded AI model cleaned up on server stop.");
     }
 }
