@@ -1,0 +1,146 @@
+{
+  "give_item": {
+    "display_name": "Give Item",
+    "description": "Give the player any item in the game",
+    "required_fields": ["item", "count"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 10,
+    "admin_only": false,
+    "category": "items"
+  },
+  "give_block": {
+    "display_name": "Give Block",
+    "description": "Give the player any block in the game",
+    "required_fields": ["block", "count"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 5,
+    "admin_only": false,
+    "category": "items"
+  },
+  "spawn_mob": {
+    "display_name": "Spawn Mob",
+    "description": "Spawn any entity near the player",
+    "required_fields": ["mob", "count"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 15,
+    "admin_only": false,
+    "category": "entities"
+  },
+  "apply_effect": {
+    "display_name": "Apply Effect",
+    "description": "Apply a status effect to the player",
+    "required_fields": ["effect", "amplifier", "duration"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 20,
+    "admin_only": false,
+    "category": "effects"
+  },
+  "teleport": {
+    "display_name": "Teleport",
+    "description": "Teleport the player to any location",
+    "required_fields": ["x", "y", "z"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 25,
+    "admin_only": false,
+    "category": "movement"
+  },
+  "damage_player": {
+    "display_name": "Damage Player",
+    "description": "Damage a specific player",
+    "required_fields": ["target", "amount"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 30,
+    "admin_only": true,
+    "category": "pvp"
+  },
+  "kill_player": {
+    "display_name": "Kill Player",
+    "description": "Kill a specific player instantly",
+    "required_fields": ["target"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 50,
+    "admin_only": true,
+    "category": "pvp"
+  },
+  "steal_items": {
+    "display_name": "Steal Items",
+    "description": "Take items from another player's inventory",
+    "required_fields": ["target", "items"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 40,
+    "admin_only": true,
+    "category": "pvp"
+  },
+  "destroy_area": {
+    "display_name": "Destroy Area",
+    "description": "Destroy blocks in a defined area",
+    "required_fields": ["x1", "y1", "z1", "x2", "y2", "z2"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 35,
+    "admin_only": true,
+    "category": "world"
+  },
+  "fill_area": {
+    "display_name": "Fill Area",
+    "description": "Fill an area with a specified block",
+    "required_fields": ["x1", "y1", "z1", "x2", "y2", "z2", "block"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 35,
+    "admin_only": false,
+    "category": "world"
+  },
+  "set_immortality": {
+    "display_name": "Grant Immortality",
+    "description": "Make the player temporarily immortal",
+    "required_fields": ["enabled", "duration"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 100,
+    "admin_only": false,
+    "category": "effects"
+  },
+  "spawn_boss": {
+    "display_name": "Spawn Boss",
+    "description": "Spawn a boss mob",
+    "required_fields": ["boss"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 80,
+    "admin_only": true,
+    "category": "entities"
+  },
+  "set_weather": {
+    "display_name": "Set Weather",
+    "description": "Change the current weather",
+    "required_fields": ["weather"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 15,
+    "admin_only": false,
+    "category": "world"
+  },
+  "set_time": {
+    "display_name": "Set Time",
+    "description": "Change the world time",
+    "required_fields": ["time"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 10,
+    "admin_only": false,
+    "category": "world"
+  },
+  "give_xp": {
+    "display_name": "Give XP",
+    "description": "Give experience levels to the player",
+    "required_fields": ["levels"],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 8,
+    "admin_only": false,
+    "category": "progression"
+  },
+  "clear_inventory": {
+    "display_name": "Clear Inventory",
+    "description": "Clear the player's entire inventory",
+    "required_fields": [],
+    "executor": "com.theforbiddenwishingbook.service.WishExecutor",
+    "base_value": 5,
+    "admin_only": false,
+    "category": "items"
+  }
+}

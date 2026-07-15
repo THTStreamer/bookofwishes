@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:writable_book" },
+    { "item": "minecraft:ender_eye" },
+    { "item": "minecraft:nether_star" }
+  ],
+  "result": {
+    "id": "thebookofwishes:book_of_wishes",
+    "count": 1
+  }
+}
