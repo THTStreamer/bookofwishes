@@ -2,6 +2,7 @@ package com.theforbiddenwishingbook;
 
 import com.theforbiddenwishingbook.config.ModConfig;
 import com.theforbiddenwishingbook.network.ModNetwork;
+import com.theforbiddenwishingbook.recipe.ConfigCondition;
 import com.theforbiddenwishingbook.registry.ModDataComponents;
 import com.theforbiddenwishingbook.registry.ModItems;
 import com.theforbiddenwishingbook.reputation.ReputationService;
@@ -30,6 +31,9 @@ public class TheForbiddenWishingBook {
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
 
         ModNetwork.register(modEventBus);
+
+        // Register recipe condition
+        ConfigCondition.register(modEventBus);
 
         // Register reload listener for datapack wish actions
         NeoForge.EVENT_BUS.addListener(this::onAddReloadListeners);

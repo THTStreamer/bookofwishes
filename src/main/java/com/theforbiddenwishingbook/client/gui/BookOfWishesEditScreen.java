@@ -42,7 +42,6 @@ public class BookOfWishesEditScreen extends Screen {
     private boolean focused = true;
     private int tickCount = 0;
 
-    // Book context data from server
     private String reputationTitle = "Unknown Mortal";
     private int trustLevel = 0;
     private int totalWishes = 0;
@@ -51,10 +50,10 @@ public class BookOfWishesEditScreen extends Screen {
     private String difficultyLabel = "Fair";
     private String personalityName = "Ancient";
 
-    // Scroll offset for response display
+    private int textScrollOffset = 0;
     private int responseScrollOffset = 0;
+    private int processedScrollOffset = 0;
 
-    // Confirmation dialog state
     private boolean showConfirmation = false;
     private int pendingWishCount = 0;
 
@@ -211,46 +210,43 @@ public class BookOfWishesEditScreen extends Screen {
                 centerX - PAGE_WIDTH / 2, centerY - PAGE_HEIGHT / 2,
                 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
 
-        // Title
         String title = "The Book of Wishes";
         guiGraphics.drawString(this.font, title,
                 centerX - this.font.width(title) / 2,
                 centerY - PAGE_HEIGHT / 2 + 8,
                 0x404040, false);
 
-        // Book context header - reputation and difficulty
         String headerLine = reputationTitle + " | " + difficultyLabel;
         guiGraphics.drawString(this.font, headerLine,
                 centerX - this.font.width(headerLine) / 2,
                 centerY - PAGE_HEIGHT / 2 + 20,
                 0xFF666666, false);
 
-        // Wish count stats
         String statsLine = totalWishes + " wishes | " + wishesGranted + " granted | " + wishesDenied + " denied";
         guiGraphics.drawString(this.font, statsLine,
                 centerX - this.font.width(statsLine) / 2,
                 centerY - PAGE_HEIGHT / 2 + 30,
                 0xFF888888, false);
 
-        // Page info
         String pageInfo = "Page " + (currentPage + 1) + " of " + pages.size();
         guiGraphics.drawString(this.font, pageInfo,
                 centerX - this.font.width(pageInfo) / 2,
                 centerY + PAGE_HEIGHT / 2 - 18,
                 0x404040, false);
 
-        // Text area background
         int textLeft = centerX - PAGE_WIDTH / 2 + TEXT_AREA_LEFT;
         int textTop = centerY - PAGE_HEIGHT / 2 + TEXT_AREA_TOP;
         guiGraphics.fill(textLeft - 1, textTop - 1, textLeft + TEXT_AREA_WIDTH + 1, textTop + TEXT_AREA_HEIGHT + 1, 0xFFCCCCCC);
         guiGraphics.fill(textLeft, textTop, textLeft + TEXT_AREA_WIDTH, textTop + TEXT_AREA_HEIGHT, 0xFFFFFFFF);
 
-        // Confirmation dialog
         if (showConfirmation) {
             renderConfirmationDialog(guiGraphics, centerX, centerY, mouseX, mouseY);
             super.render(guiGraphics, mouseX, mouseY, partialTick);
             return;
         }
+
+        // Enable scissor to clip text to the text area
+        guiGraphics.enableScissor(textLeft, textTop, textLeft + TEXT_AREA_WIDTH, textTop + TEXT_AREA_HEIGHT);
 
         if (processing) {
             renderProcessingState(guiGraphics, textLeft, textTop);
@@ -265,14 +261,52 @@ public class BookOfWishesEditScreen extends Screen {
             }
         }
 
+        guiGraphics.disableScissor();
+
+        // Scroll indicators
+        renderScrollIndicators(guiGraphics, textLeft, textTop);
+
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
+    private void renderScrollIndicators(GuiGraphics guiGraphics, int textLeft, int textTop) {
+        // Show scroll hint if content is scrollable
+        boolean canScrollUp = false;
+        boolean canScrollDown = false;
+
+        if (lastResults != null && !lastResults.isEmpty()) {
+            List<String> allLines = buildResultLines();
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+            canScrollUp = responseScrollOffset > 0;
+            canScrollDown = responseScrollOffset + maxVisibleLines < allLines.size();
+        } else if (pages.get(currentPage).isProcessed()) {
+            PageData page = pages.get(currentPage);
+            List<String> allLines = buildProcessedPageLines(page);
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+            canScrollUp = processedScrollOffset > 0;
+            canScrollDown = processedScrollOffset + maxVisibleLines < allLines.size();
+        } else {
+            List<String> allLines = wrapText(currentPageText.isEmpty() ? "" : currentPageText, CHARS_PER_LINE);
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 28) / LINE_HEIGHT;
+            canScrollUp = textScrollOffset > 0;
+            canScrollDown = textScrollOffset + maxVisibleLines < allLines.size();
+        }
+
+        if (canScrollUp) {
+            guiGraphics.drawString(this.font, "^",
+                    textLeft + TEXT_AREA_WIDTH / 2 - 3, textTop - 10,
+                    0xFF888888, false);
+        }
+        if (canScrollDown) {
+            guiGraphics.drawString(this.font, "v",
+                    textLeft + TEXT_AREA_WIDTH / 2 - 3, textTop + TEXT_AREA_HEIGHT + 2,
+                    0xFF888888, false);
+        }
+    }
+
     private void renderConfirmationDialog(GuiGraphics guiGraphics, int centerX, int centerY, int mouseX, int mouseY) {
-        // Darken background
         guiGraphics.fill(0, 0, this.width, this.height, 0xCC000000);
 
-        // Dialog box
         int dialogWidth = 200;
         int dialogHeight = 120;
         int dialogLeft = centerX - dialogWidth / 2;
@@ -281,14 +315,12 @@ public class BookOfWishesEditScreen extends Screen {
         guiGraphics.fill(dialogLeft, dialogTop, dialogLeft + dialogWidth, dialogTop + dialogHeight, 0xFF1A1A2E);
         guiGraphics.fill(dialogLeft + 1, dialogTop + 1, dialogLeft + dialogWidth - 1, dialogTop + dialogHeight - 1, 0xFF2D2D44);
 
-        // Title
         String confirmTitle = "Confirm Wish";
         guiGraphics.drawString(this.font, confirmTitle,
                 centerX - this.font.width(confirmTitle) / 2,
                 dialogTop + 10,
                 0xFFFF6666, false);
 
-        // Message
         String line1 = "You are about to submit";
         String line2 = pendingWishCount + " wish" + (pendingWishCount > 1 ? "s" : "") + " to the entity.";
         String line3 = "Payment will be extracted.";
@@ -299,7 +331,6 @@ public class BookOfWishesEditScreen extends Screen {
         guiGraphics.drawString(this.font, line3, dialogLeft + 10, dialogTop + 54, 0xFFCC6600, false);
         guiGraphics.drawString(this.font, line4, dialogLeft + 10, dialogTop + 66, 0xFFCCCCCC, false);
 
-        // Yes/No buttons
         String yesText = "Yes";
         String noText = "No";
         int yesWidth = this.font.width(yesText) + 16;
@@ -320,7 +351,6 @@ public class BookOfWishesEditScreen extends Screen {
     }
 
     private void renderProcessingState(GuiGraphics guiGraphics, int textLeft, int textTop) {
-        // Animated dots
         int dots = (tickCount / 15) % 4;
         String dotsStr = ".".repeat(dots);
 
@@ -329,110 +359,107 @@ public class BookOfWishesEditScreen extends Screen {
         guiGraphics.drawString(this.font, "Please wait" + dotsStr,
                 textLeft + 4, textTop + 16, 0xFF999999, false);
 
-        // Animated progress indicator
         int progressWidth = (int) ((tickCount % 120) / 120.0 * TEXT_AREA_WIDTH);
         guiGraphics.fill(textLeft, textTop + TEXT_AREA_HEIGHT - 4,
                 textLeft + progressWidth, textTop + TEXT_AREA_HEIGHT, 0xFF6666FF);
     }
 
-    private void renderResults(GuiGraphics guiGraphics, int textLeft, int textTop) {
-        // Show all results with scrolling
-        int lineY = textTop + 4;
-        int maxLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
-        int linesDrawn = 0;
-
+    private List<String> buildResultLines() {
+        List<String> allLines = new ArrayList<>();
         for (int i = 0; i < lastResults.size(); i++) {
             WishResponsePayload.WishResult result = lastResults.get(i);
 
-            if (linesDrawn >= maxLines) break;
+            String statusText = result.status() == WishBookData.WishStatus.GRANTED ? "GRANTED" : "DENIED";
+            allLines.add("Wish " + (i + 1) + ": " + statusText);
 
-            // Status line
-            String statusText = result.status() == WishBookData.WishStatus.GRANTED
-                    ? "GRANTED" : "DENIED";
-            int statusColor = result.status() == WishBookData.WishStatus.GRANTED
-                    ? 0xFF00AA00 : 0xFFCC0000;
+            allLines.addAll(wrapText(result.aiResponseText(), CHARS_PER_LINE));
 
-            guiGraphics.drawString(this.font, "Wish " + (i + 1) + ": " + statusText,
-                    textLeft + 4, lineY, statusColor, false);
-            lineY += LINE_HEIGHT;
-            linesDrawn++;
-
-            // Response text
-            List<String> wrappedLines = wrapText(result.aiResponseText(), CHARS_PER_LINE);
-            for (String line : wrappedLines) {
-                if (linesDrawn >= maxLines) break;
-                guiGraphics.drawString(this.font, line, textLeft + 4, lineY, 0xFF333333, false);
-                lineY += LINE_HEIGHT;
-                linesDrawn++;
-            }
-
-            // Payment
             if (!result.paymentTaken().isEmpty()) {
-                if (linesDrawn < maxLines) {
-                    guiGraphics.drawString(this.font, "Payment:", textLeft + 4, lineY, 0xFFCC6600, false);
-                    lineY += LINE_HEIGHT;
-                    linesDrawn++;
-                }
+                allLines.add("Payment:");
                 for (String payment : result.paymentTaken()) {
-                    if (linesDrawn >= maxLines) break;
-                    guiGraphics.drawString(this.font, "- " + payment, textLeft + 4, lineY, 0xFF666666, false);
-                    lineY += LINE_HEIGHT;
-                    linesDrawn++;
+                    allLines.add("- " + payment);
                 }
             }
 
-            // Separator between results
-            if (i < lastResults.size() - 1 && linesDrawn < maxLines) {
+            if (i < lastResults.size() - 1) {
+                allLines.add("---");
+            }
+        }
+        return allLines;
+    }
+
+    private void renderResults(GuiGraphics guiGraphics, int textLeft, int textTop) {
+        List<String> allLines = buildResultLines();
+        int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+
+        int lineY = textTop + 4;
+        int linesDrawn = 0;
+
+        for (int i = responseScrollOffset; i < allLines.size() && linesDrawn < maxVisibleLines; i++) {
+            String line = allLines.get(i);
+            int color = 0xFF333333;
+            if (line.startsWith("Wish ")) {
+                color = line.contains("GRANTED") ? 0xFF00AA00 : 0xFFCC0000;
+            } else if (line.equals("Payment:")) {
+                color = 0xFFCC6600;
+            } else if (line.startsWith("- ")) {
+                color = 0xFF666666;
+            } else if (line.equals("---")) {
                 guiGraphics.fill(textLeft + 4, lineY, textLeft + TEXT_AREA_WIDTH - 4, lineY + 1, 0xFFCCCCCC);
                 lineY += 4;
                 linesDrawn++;
+                continue;
             }
-        }
-
-        // Scroll indicator
-        if (lastResults.size() > 1) {
-            String scrollHint = "Press any key to continue";
-            guiGraphics.drawString(this.font, scrollHint,
-                    textLeft + 4, textTop + TEXT_AREA_HEIGHT - 14,
-                    0xFF888888, false);
+            guiGraphics.drawString(this.font, line, textLeft + 4, lineY, color, false);
+            lineY += LINE_HEIGHT;
+            linesDrawn++;
         }
     }
 
-    private void renderProcessedPage(GuiGraphics guiGraphics, int textLeft, int textTop, PageData page) {
-        String statusText = page.status() == WishBookData.WishStatus.GRANTED ? "GRANTED" : "DENIED";
-        int statusColor = page.status() == WishBookData.WishStatus.GRANTED ? 0xFF00AA00 : 0xFFCC0000;
-        guiGraphics.drawString(this.font, "Status: " + statusText, textLeft + 4, textTop + 4, statusColor, false);
+    private List<String> buildProcessedPageLines(PageData page) {
+        List<String> allLines = new ArrayList<>();
 
-        guiGraphics.drawString(this.font, "Wish:", textLeft + 4, textTop + 16, 0xFF666666, false);
-        List<String> wishLines = wrapText(page.wishText(), CHARS_PER_LINE);
-        int lineY = textTop + 26;
-        for (String line : wishLines) {
-            if (lineY + LINE_HEIGHT > textTop + TEXT_AREA_HEIGHT - 4) break;
-            guiGraphics.drawString(this.font, line, textLeft + 4, lineY, 0xFF333333, false);
-            lineY += LINE_HEIGHT;
-        }
+        String statusText = page.status() == WishBookData.WishStatus.GRANTED ? "GRANTED" : "DENIED";
+        allLines.add("Status: " + statusText);
+
+        allLines.add("Wish:");
+        allLines.addAll(wrapText(page.wishText(), CHARS_PER_LINE));
 
         if (!page.aiResponse().isEmpty()) {
-            lineY += 2;
-            guiGraphics.drawString(this.font, "AI:", textLeft + 4, lineY, 0xFF666666, false);
-            lineY += LINE_HEIGHT;
-            List<String> responseLines = wrapText(page.aiResponse(), CHARS_PER_LINE);
-            for (String line : responseLines) {
-                if (lineY + LINE_HEIGHT > textTop + TEXT_AREA_HEIGHT - 4) break;
-                guiGraphics.drawString(this.font, line, textLeft + 4, lineY, 0xFF333333, false);
-                lineY += LINE_HEIGHT;
-            }
+            allLines.add("AI:");
+            allLines.addAll(wrapText(page.aiResponse(), CHARS_PER_LINE));
         }
 
         if (!page.paymentTaken().isEmpty()) {
-            lineY += 2;
-            guiGraphics.drawString(this.font, "Payment:", textLeft + 4, lineY, 0xFFCC6600, false);
-            lineY += LINE_HEIGHT;
+            allLines.add("Payment:");
             for (String payment : page.paymentTaken()) {
-                if (lineY + LINE_HEIGHT > textTop + TEXT_AREA_HEIGHT - 4) break;
-                guiGraphics.drawString(this.font, "- " + payment, textLeft + 4, lineY, 0xFF666666, false);
-                lineY += LINE_HEIGHT;
+                allLines.add("- " + payment);
             }
+        }
+
+        return allLines;
+    }
+
+    private void renderProcessedPage(GuiGraphics guiGraphics, int textLeft, int textTop, PageData page) {
+        List<String> allLines = buildProcessedPageLines(page);
+        int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+
+        int lineY = textTop + 4;
+        int linesDrawn = 0;
+
+        for (int i = processedScrollOffset; i < allLines.size() && linesDrawn < maxVisibleLines; i++) {
+            String line = allLines.get(i);
+            int color = 0xFF333333;
+            if (line.startsWith("Status:")) {
+                color = line.contains("GRANTED") ? 0xFF00AA00 : 0xFFCC0000;
+            } else if (line.equals("Wish:") || line.equals("AI:") || line.equals("Payment:")) {
+                color = 0xFF666666;
+            } else if (line.startsWith("- ")) {
+                color = 0xFF666666;
+            }
+            guiGraphics.drawString(this.font, line, textLeft + 4, lineY, color, false);
+            lineY += LINE_HEIGHT;
+            linesDrawn++;
         }
     }
 
@@ -442,24 +469,62 @@ public class BookOfWishesEditScreen extends Screen {
                 textLeft + 4, textTop + 4, 0xFF666666, false);
 
         List<String> wrappedLines = wrapText(currentPageText.isEmpty() ? "(empty)" : currentPageText, CHARS_PER_LINE);
+        int maxVisibleLines = (TEXT_AREA_HEIGHT - 28) / LINE_HEIGHT;
+
         int lineY = textTop + 18;
-        for (String line : wrappedLines) {
-            if (lineY + LINE_HEIGHT > textTop + TEXT_AREA_HEIGHT - 4) break;
+        int linesDrawn = 0;
+
+        for (int i = textScrollOffset; i < wrappedLines.size() && linesDrawn < maxVisibleLines; i++) {
+            String line = wrappedLines.get(i);
             int color = currentPageText.isEmpty() ? 0xFFAAAAAA : 0xFF333333;
             guiGraphics.drawString(this.font, line, textLeft + 4, lineY, color, false);
             lineY += LINE_HEIGHT;
+            linesDrawn++;
         }
 
         // Blinking cursor
         if (focused && (tickCount / 20) % 2 == 0) {
             int cursorLine = currentPageText.substring(0, Math.min(cursorPos, currentPageText.length())).split("\n", -1).length - 1;
-            int cursorX = textLeft + 4 + this.font.width(currentPageText.substring(
-                    Math.max(0, currentPageText.lastIndexOf('\n', Math.min(cursorPos, currentPageText.length()) - 1) + 1),
-                    Math.min(cursorPos, currentPageText.length())
-            ));
-            int cursorY = textTop + 18 + cursorLine * LINE_HEIGHT;
-            guiGraphics.fill(cursorX, cursorY, cursorX + 1, cursorY + LINE_HEIGHT - 2, 0xFF000000);
+            int adjustedCursorLine = cursorLine - textScrollOffset;
+            if (adjustedCursorLine >= 0 && adjustedCursorLine < maxVisibleLines) {
+                int cursorX = textLeft + 4 + this.font.width(currentPageText.substring(
+                        Math.max(0, currentPageText.lastIndexOf('\n', Math.min(cursorPos, currentPageText.length()) - 1) + 1),
+                        Math.min(cursorPos, currentPageText.length())
+                ));
+                int cursorY = textTop + 18 + adjustedCursorLine * LINE_HEIGHT;
+                guiGraphics.fill(cursorX, cursorY, cursorX + 1, cursorY + LINE_HEIGHT - 2, 0xFF000000);
+            }
         }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (showConfirmation || processing) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+
+        int scrollAmount = scrollY > 0 ? -3 : 3;
+
+        if (lastResults != null && !lastResults.isEmpty()) {
+            List<String> allLines = buildResultLines();
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+            responseScrollOffset = Math.max(0, Math.min(responseScrollOffset + scrollAmount,
+                    Math.max(0, allLines.size() - maxVisibleLines)));
+            return true;
+        } else if (pages.get(currentPage).isProcessed()) {
+            PageData page = pages.get(currentPage);
+            List<String> allLines = buildProcessedPageLines(page);
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 8) / LINE_HEIGHT;
+            processedScrollOffset = Math.max(0, Math.min(processedScrollOffset + scrollAmount,
+                    Math.max(0, allLines.size() - maxVisibleLines)));
+            return true;
+        } else if (focused) {
+            List<String> wrappedLines = wrapText(currentPageText.isEmpty() ? "" : currentPageText, CHARS_PER_LINE);
+            int maxVisibleLines = (TEXT_AREA_HEIGHT - 28) / LINE_HEIGHT;
+            textScrollOffset = Math.max(0, Math.min(textScrollOffset + scrollAmount,
+                    Math.max(0, wrappedLines.size() - maxVisibleLines)));
+            return true;
+        }
+
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -471,15 +536,16 @@ public class BookOfWishesEditScreen extends Screen {
         if (processing) return super.keyPressed(keyCode, scanCode, modifiers);
 
         if (lastResults != null) {
-            if (keyCode == 256) { // Only dismiss on ESC
+            if (keyCode == 256) {
                 lastResults = null;
+                responseScrollOffset = 0;
                 reloadFromBook();
                 if (currentPage >= pages.size()) currentPage = pages.size() - 1;
                 loadPageContent();
                 this.onClose();
                 return true;
             }
-            return true; // consume all other keys while results shown
+            return true;
         }
 
         if (pages.get(currentPage).isProcessed()) return super.keyPressed(keyCode, scanCode, modifiers);
@@ -491,14 +557,16 @@ public class BookOfWishesEditScreen extends Screen {
                 cursorPos--;
                 savePageContent();
                 updateButtons();
+                scrollToCursor();
             }
             return true;
-        } else if (keyCode == 32) { // Space
+        } else if (keyCode == 32) {
             return true;
-        } else if (keyCode == 256) { // Escape
+        } else if (keyCode == 256) {
             if (!currentPageText.isEmpty()) {
                 currentPageText = "";
                 cursorPos = 0;
+                textScrollOffset = 0;
                 savePageContent();
                 return true;
             }
@@ -509,25 +577,45 @@ public class BookOfWishesEditScreen extends Screen {
                 currentPageText = currentPageText.substring(0, cursorPos) + "\n" + currentPageText.substring(cursorPos);
                 cursorPos++;
                 savePageContent();
+                scrollToCursor();
             }
             return true;
         } else if (keyCode == 262) { // Right arrow
             if (cursorPos < currentPageText.length()) cursorPos++;
+            scrollToCursor();
             return true;
         } else if (keyCode == 263) { // Left arrow
             if (cursorPos > 0) cursorPos--;
+            scrollToCursor();
+            return true;
+        } else if (keyCode == 264) { // Down arrow
+            scrollToCursor();
+            return true;
+        } else if (keyCode == 265) { // Up arrow
+            scrollToCursor();
             return true;
         }
 
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    private void scrollToCursor() {
+        int cursorLine = currentPageText.substring(0, Math.min(cursorPos, currentPageText.length())).split("\n", -1).length - 1;
+        int maxVisibleLines = (TEXT_AREA_HEIGHT - 28) / LINE_HEIGHT;
+
+        if (cursorLine < textScrollOffset) {
+            textScrollOffset = cursorLine;
+        } else if (cursorLine >= textScrollOffset + maxVisibleLines) {
+            textScrollOffset = cursorLine - maxVisibleLines + 1;
+        }
+    }
+
     private boolean handleConfirmationKey(int keyCode) {
-        if (keyCode == 257 || keyCode == 335) { // Enter = Yes
+        if (keyCode == 257 || keyCode == 335) {
             showConfirmation = false;
             submitWishes();
             return true;
-        } else if (keyCode == 256) { // Escape = No
+        } else if (keyCode == 256) {
             showConfirmation = false;
             return true;
         }
@@ -546,6 +634,7 @@ public class BookOfWishesEditScreen extends Screen {
             cursorPos++;
             savePageContent();
             updateButtons();
+            scrollToCursor();
             return true;
         }
 
@@ -569,6 +658,7 @@ public class BookOfWishesEditScreen extends Screen {
 
             if (lastResults != null) {
                 lastResults = null;
+                responseScrollOffset = 0;
                 reloadFromBook();
                 if (currentPage >= pages.size()) currentPage = pages.size() - 1;
                 loadPageContent();
@@ -588,7 +678,6 @@ public class BookOfWishesEditScreen extends Screen {
 
         int buttonY = dialogTop + dialogHeight - 30;
 
-        // Yes button
         String yesText = "Yes";
         int yesWidth = this.font.width(yesText) + 16;
         int yesX = centerX - yesWidth - 5;
@@ -598,7 +687,6 @@ public class BookOfWishesEditScreen extends Screen {
             return true;
         }
 
-        // No button
         String noText = "No";
         int noWidth = this.font.width(noText) + 16;
         int noX = centerX + 5;
@@ -613,7 +701,6 @@ public class BookOfWishesEditScreen extends Screen {
     private void onGrantWishesClicked() {
         if (processing) return;
 
-        // Count unprocessed pages with wishes
         int wishCount = 0;
         for (PageData page : pages) {
             if (!page.isProcessed() && !page.wishText().isBlank()) {
@@ -623,7 +710,6 @@ public class BookOfWishesEditScreen extends Screen {
 
         if (wishCount == 0) return;
 
-        // Show confirmation dialog
         showConfirmation = true;
         pendingWishCount = wishCount;
         updateButtons();
@@ -648,6 +734,7 @@ public class BookOfWishesEditScreen extends Screen {
     public void onWishResponseReceived(List<WishResponsePayload.WishResult> results) {
         this.processing = false;
         this.lastResults = results;
+        this.responseScrollOffset = 0;
         updateButtons();
     }
 
@@ -674,6 +761,8 @@ public class BookOfWishesEditScreen extends Screen {
         if (newPage >= 0 && newPage < pages.size()) {
             savePageContent();
             currentPage = newPage;
+            textScrollOffset = 0;
+            processedScrollOffset = 0;
             loadPageContent();
             updateButtons();
         }

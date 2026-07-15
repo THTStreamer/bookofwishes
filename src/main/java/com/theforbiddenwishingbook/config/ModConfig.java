@@ -19,6 +19,7 @@ public class ModConfig {
     public static ModConfigSpec.IntValue EMBEDDED_GPU_LAYERS;
     public static ModConfigSpec.IntValue EMBEDDED_THREADS;
 
+    public static ModConfigSpec.BooleanValue ENABLE_CRAFTING_RECIPE;
     public static ModConfigSpec.IntValue COOLDOWN_SECONDS;
     public static ModConfigSpec.IntValue MAX_WISHES_PER_BOOK;
     public static ModConfigSpec.BooleanValue ENABLE_PAYMENT_SYSTEM;
@@ -101,6 +102,14 @@ public class ModConfig {
         builder.pop();
 
         builder.comment("Gameplay Settings").push("gameplay");
+
+        ENABLE_CRAFTING_RECIPE = builder
+                .comment(
+                        "Enable the crafting recipe for the Book of Wishes.",
+                        "When false, the book can only be obtained via commands or other means.",
+                        "Recipe: Writable Book + Ender Eye + Nether Star"
+                )
+                .define("enable_crafting_recipe", false);
 
         COOLDOWN_SECONDS = builder
                 .comment("Cooldown between wish submissions per player")

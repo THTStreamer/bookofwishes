@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "thebookofwishes:config"
+    }
+  ],
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
     { "item": "minecraft:writable_book" },
